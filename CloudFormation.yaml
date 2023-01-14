@@ -1,0 +1,40 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Desciption: >-
+This template create a nodejs webapp in EC2 instance and connect with rds
+
+Resources:
+  WebServerSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow access on ports 3000 and 22
+      GroupName: 
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 3000
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 2001:ee0:16d:59f6:69b0:2efa:6967:e1bc
+      Tags:
+        - Key: Name
+          Value: MyWebServer SG
+      VpcId: vpc-0adbd4f27504eaf08
+
+  EC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: t2.micro
+      SubnetId: subnet-06ae5ce0bf500ee0c
+      SecurityGroupIds: 
+        - !Ref WebServerSG
+      KeyName:
+      ImageId:
+      Tags:
+        - Key:
+          Value:
+      UserData:
+        Fn::Base64:
+          !Sub |
