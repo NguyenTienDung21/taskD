@@ -1,0 +1,169 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Desciption: >-
+This template create a nodejs webapp in EC2 instance and connect with rds
+
+
+Parameters: 
+  VpcCIDR: 
+    Default: 10.0.0.0/16
+    Description: IP range
+    Type: String 
+
+  PublicSubnet1CIDR: 
+    Default: 10.0.0.0/24
+    Description: IP range
+    Type: String
+
+  DatabaseInstanceIdentifier: 
+    AllowedPattern: '[a-zA-Z][a-zA-Z0-9]*'
+    ConstraintDescription:  begin with letter
+    Default: number01
+    Desctiption: db instance
+    MaxLength: 16
+    MinLength: 6
+    Type: String
+  
+  DatabaseName: 
+    AllowedPattern: '[a-zA-Z][a-zA-Z0-9]*'
+    ConstraintDescription:  begin with letter
+    Default: number01
+    Desctiption: db instance
+    MaxLength: 16
+    MinLength: 6
+    Type: String
+  
+  DatabaseUser: 
+    AllowedPattern: '[a-zA-Z][a-zA-Z0-9]*'
+    ConstraintDescription:  begin with letter
+    Default: number01
+    Desctiption: db instance
+    MaxLength: 16
+    MinLength: 6
+    Type: String
+  
+  DatabasePassword:
+    AllowedPattern: '[a-zA-Z][a-zA-Z0-9]*'
+    ConstraintDescription:  begin with letter
+    Default: number01
+    Desctiption: db instance
+    MaxLength: 16
+    MinLength: 6
+    Type: String
+  
+  DatabaseBackupRetentionPeriod: 
+    ConstraintDescription: Database backup retention period
+    Default: 0 
+    Description: nothing
+    MaxValue: 35
+    MinValue: 0
+    Type: Number
+  
+  DatabaseAllocatedStorage: 
+    ConstraintDescription: Database backup retention period
+    Default: 20 
+    Description: nothing
+    MaxValue: 1024
+    MinValue: 5
+    Type: Number
+  
+  DatabaseInstanceClass: 
+    AllowedValues: 
+      - db.t1.micro
+      - db.t2.micro
+    ConstraintDescription: Valid instance type
+    Default: db.t2.micro  
+    Description: nothing
+    Type: String
+
+  MultiAZDatabase: 
+    AllowedValues: 
+      - true
+      - false
+    ConstraintDescription: true of false
+    Default: false
+    Description : create multi az
+    Type: String
+
+
+Resources:
+  VPC: 
+    CidrBlock: !Ref VpcCIDR
+    EnableDnsSupport: true
+    EnableDnsHostnames: true
+    Tags:
+     - Key: Name
+       Value: task D
+
+  WebServerSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow access on ports 3000 and 22
+      GroupName: 
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 3000
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 2001:ee0:16d:59f6:69b0:2efa:6967:e1bc
+      Tags:
+        - Key: Name
+          Value: MyWebServer SG
+      VpcId: !Ref VPC
+
+ 
+  DatabaseSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription:
+      SubnetIds: 
+      Tags:
+        - Key:
+          Value:
+
+  DatabaseInstance:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      AllocatedStorage: !Ref DatabaseAllocatedStorage
+      AvailabilityZone: !Select [0, !GetAZs '']
+      BackupRetentionPeriod: !Ref DatabaseBackupRetentionPeriod
+      DBInstanceClass: !Ref DatabaseInstanceClass
+      DBInstanceIdentifier: !Ref DatabaseInstanceIdentifier
+      DBName: !Ref DatabaseName
+      DBSubnetGroupName: !Ref DatabaseSubnetGroup
+      Engine: PostgreSQL
+      EngineVersion: 15
+      MasterUsername: !Ref DatabaseUser
+      MasterUserPassword: !Ref DatabasePassword
+      MultiAZ: !Ref MultiAZDatabase
+      VPCSecurityGroups: 
+
+  EC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: t2.micro
+      SubnetId: !Ref VPC
+      SecurityGroupIds: 
+        - !Ref WebServerSG
+      KeyName: taskD key pair
+      ImageId: ami-0b5eea76982371e91
+      Tags:
+        - Key: Name
+          Value: MyWebServer
+      UserData:
+        Fn::Base64:
+          !Sub | 
+            #!/bin/bash -xe 
+            sudo su
+            yum update -y 
+            yum install -y nodejs19
+            wget https://github.com/NguyenTienDung21/taskD/archive/refs/heads/master.zip
+            unzip master.zip 
+            cd taskD-master
+            node migrations.js
+            npm install 
+            npm start
+  
