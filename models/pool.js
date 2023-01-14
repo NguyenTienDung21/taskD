@@ -1,14 +1,12 @@
 const { Pool } = require("pg");
 
-require('dotenv').config()
 
-console.log(process.env.RDS_PASSWORD)
 const pool = new Pool({
-  user: process.env.RDS_USERNAME,
-  database: process.env.RDS_DB_NAME,
-  password: process.env.RDS_PASSWORD,
-  port: process.env.RDS_PORT,
-  host: process.env.RDS_HOSTNAME,
+  user: 'dbadmin',
+  database: 'applicationdb',
+  password: 'database1407',
+  port: 5432,
+  host: "postgresql57db.csspkrtyfmqm.us-east-1.rds.amazonaws.com",
 });
 
 module.exports = { pool };

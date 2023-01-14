@@ -1,4 +1,28 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: This template create a nodejs webapp in EC2 instance and connect with rds
+
+Metadata:
+  AWS::CloudFormation::Interface: 
+    ParameterGroups:
+      - 
+        Label: 
+          default: Export VPC Stack Name
+        Parameters:
+          - ExportVpcStackName
+      - 
+        Label: 
+          default: AG Parameters
+        Parameters:
+          - InstanceType
+          - KeyName
+          - AmazonImageID
+          
+
 Parameters:
+  ExportVpcStackName:
+    Description: The name of the vpc stack that exports values
+    Type: String
+
   InstanceType:
     Description: WebServer EC2 instance type
     Type: String
@@ -19,33 +43,28 @@ Parameters:
     Type: String
 
 Resources:
-  EC2Instance1:
-    Type: AWS::EC2::Instance
+  LaunchConfig: 
+    Type: AWS::AutoScaling::LaunchConfiguration
     Properties:
       InstanceType: !Ref InstanceType
-      SubnetId:
-        Fn::ImportValue: !Sub ${ExportVpcStackName}-PrivateSubnet1
-      SecurityGroupIds:
-        - Fn::ImportValue: !Sub ${ExportVpcStackName}-WebServerSecurityGroup
       KeyName: !Ref KeyName
-      ImageId: !Ref AmazonImageID 
-      Tags:
-        - Key: Name
-          Value: EC2 | Private Subnet 1
+      ImageId: ami-08fdec01f5df9998f
       UserData:
         Fn::Base64:
           !Sub | 
             #!/bin/bash -xe 
             sudo su
-            yum update -y 
-            yum install -y nodejs19
+            apt update -y >> log.txt
+            apt-get install -y  unzip >> log_unzip.txt
+            apt-get install -y nodejs >> log_node.txt
+            apt install -y npm >>log_npm.txt
             wget https://github.com/NguyenTienDung21/taskD/archive/refs/heads/master.zip
-            unzip master.zip 
+            unzip master.zip
             cd taskD-master
+            npm i .
             node migrations.js
-            npm install 
             npm start
-    
+
   WebServerAutoScalingGroup:
     Type: AWS::AutoScaling::AutoScalingGroup
     Properties:
@@ -55,9 +74,8 @@ Resources:
         - Fn::ImportValue: !Sub ${ExportVpcStackName}-PrivateSubnet2
       HealthCheckGracePeriod: 300
       HealthCheckType: ELB
-      LaunchTemplate:
-        LaunchTemplateName: !Ref WebServerLaunchTemplateName
-        Version: !GetAtt WebServerLaunchTemplate.LatestVersionNumber
+      LaunchConfigurationName:
+        Ref: LaunchConfig
       MinSize: 1
       MaxSize: 4
       DesiredCapacity: 2
@@ -66,7 +84,7 @@ Resources:
           Value: AS-WebServer
           PropagateAtLaunch: true
       TargetGroupARNs:
-        - Fn::ImportValue: !Sub ${ExportAlbStackName}-ALBTargetGroup
+        - !Ref ALBTargetGroup
   
   WebServerScaleUpPolicy:
     Type: AWS::AutoScaling::ScalingPolicy
@@ -87,8 +105,12 @@ Resources:
   ApplicationLoadBalancer:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Properties:
+      Name: TaskDApplicationLoadBalancer
+      SecurityGroups:
+        - Fn::ImportValue: !Sub ${ExportVpcStackName}-ALBSecurityGroup
       Subnets:
-        Ref: Subnets
+        - Fn::ImportValue: !Sub ${ExportVpcStackName}-PublicSubnet1
+        - Fn::ImportValue: !Sub ${ExportVpcStackName}-PublicSubnet2
 
   ALBListenerNoSslCertificate:
     Type: 'AWS::ElasticLoadBalancingV2::Listener'
