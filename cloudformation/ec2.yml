@@ -49,6 +49,8 @@ Resources:
       InstanceType: !Ref InstanceType
       KeyName: !Ref KeyName
       ImageId: ami-08fdec01f5df9998f
+      SecurityGroups:
+        - Fn::ImportValue: !Sub ${ExportVpcStackName}-WebServerSecurityGroup
       UserData:
         Fn::Base64:
           !Sub | 
@@ -61,7 +63,7 @@ Resources:
             wget https://github.com/NguyenTienDung21/taskD/archive/refs/heads/master.zip
             unzip master.zip
             cd taskD-master
-            npm i .
+            npm i . >> install_log.txt
             node migrations.js
             npm start
 
@@ -85,6 +87,7 @@ Resources:
           PropagateAtLaunch: true
       TargetGroupARNs:
         - !Ref ALBTargetGroup
+
   
   WebServerScaleUpPolicy:
     Type: AWS::AutoScaling::ScalingPolicy
@@ -111,18 +114,14 @@ Resources:
       Subnets:
         - Fn::ImportValue: !Sub ${ExportVpcStackName}-PublicSubnet1
         - Fn::ImportValue: !Sub ${ExportVpcStackName}-PublicSubnet2
+      
 
   ALBListenerNoSslCertificate:
     Type: 'AWS::ElasticLoadBalancingV2::Listener'
     Properties:
       DefaultActions:
-        - RedirectConfig:
-            Host: '#{host}'
-            Path: '/#{path}'
-            Port: '443'
-            Protocol: HTTPS
-            StatusCode: HTTP_301
-          Type: redirect 
+        - Type: forward 
+          TargetGroupArn: !Ref ALBTargetGroup
       LoadBalancerArn: !Ref ApplicationLoadBalancer
       Port: 80
       Protocol: HTTP 
@@ -130,9 +129,13 @@ Resources:
   ALBTargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties:
-      HealthCheckIntervalSeconds: 30
+      HealthCheckIntervalSeconds: 10
+      HealthCheckPath: /
       HealthCheckTimeoutSeconds: 5
-      HealthyThresholdCount: 3
+      HealthyThresholdCount: 2
+      Matcher:
+        HttpCode: 200,302
+      Name: MyWebServers
       Port: 80
       Protocol: HTTP
       UnhealthyThresholdCount: 5
